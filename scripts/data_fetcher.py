@@ -113,11 +113,31 @@ class DataFetcher:
             chrome_options.add_argument("--headless=new")
             chrome_options.binary_location = "/usr/bin/chromium"
             service = ChromeService(executable_path="/usr/bin/chromedriver")
+            def _setting_driver(driver):
+                # 显式设置窗口大小（解决无头模式下 --window-size 不生效的问题）
+                width, height = map(int, window_size.split(','))
+                driver.set_window_size(width, height)
+                try:
+                    driver.execute_cdp_cmd('Emulation.setDeviceMetricsOverride', {
+                        "width": width,
+                        "height": height,
+                        "deviceScaleFactor": int(device_scale),
+                        "mobile": False,
+                        "dontSetVisibleSize": False
+                    })
+                except Exception as e:
+                    logging.warning(f"CDP 设置 viewport 失败: {e}")
+                
         else:
             service = self._find_chromedriver()
+            def _setting_driver(driver):
+                driver.maximize_window()
 
         driver = webdriver.Chrome(options=chrome_options, service=service)
         driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
+        
+        _setting_driver(driver)
+        
         return driver
 
     @staticmethod
@@ -317,7 +337,6 @@ class DataFetcher:
         driver = self._get_webdriver()
         ErrorWatcher.instance().set_driver(driver)
 
-        driver.maximize_window()
         self._random_delay(1, 3)
         logging.info("浏览器驱动已初始化。")
         updator = SensorUpdator()
