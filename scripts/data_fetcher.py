@@ -235,6 +235,7 @@ class DataFetcher:
                     else:
                         logging.error("验证码已通过但仍停留在登录页面。")
             else:
+                error = self._get_error_message(driver, "//div[@class='errmsg-tip']//span")
                 logging.error("点击验证码识别在所有重试后均失败。")
         return self._fallback_login(driver, error)
 
