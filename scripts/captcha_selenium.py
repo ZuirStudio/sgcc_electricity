@@ -222,7 +222,8 @@ def _solve_slider(driver: WebDriver, selectors: dict) -> bool:
         try:
             bg_bytes = bg_el.screenshot_as_png
             bg_url = "data:image/png;base64," + __import__('base64').b64encode(bg_bytes).decode()
-        except Exception:
+        except Exception as e:
+            logger.error(f"无法获取滑块背景图片，错误详情: {e}")  
             return False
 
     # 获取滑块容器宽度用于距离计算
