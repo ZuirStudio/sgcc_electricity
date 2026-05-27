@@ -18,6 +18,30 @@ class DB:
         # 关闭连接
         pass
 
+    def upsert_user(self, user_id, user, user_name):
+        # 更新用户信息??
+        pass
+
+    def cleanup_old_data(self):
+        # 清理过旧数据??
+        pass
+
+    def insert_daily_data(self, data:dict):
+        # 插入每日数据??
+        pass
+
+    def insert_monthly_data(self, data:dict):
+        # 插入每月数据??
+        pass
+
+    def insert_balance_log(self, data:dict):
+        # 插入余额日志??
+        pass
+
+    def insert_yearly_data(self, data:dict):
+        # 插入每年数据??
+        pass
+
 class SqliteDB(DB):
     def connect_user_db(self, user_id):
         """创建数据库集合，db_name = electricity_daily_usage_{user_id}
