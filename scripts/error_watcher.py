@@ -109,7 +109,7 @@ class ErrorWatcher:
         screenshot_path = os.path.join(self.screenshot_dir, f'error_{timestamp}.png')
 
         try:
-            self.driver.save_screenshot(screenshot_path)
+            driver.screenshot(path=screenshot_path)
             logging.error(f"发生错误: {error_message}。截图已保存至 {screenshot_path}")
         except Exception as e:
             logging.error(f"保存截图失败: {e}")

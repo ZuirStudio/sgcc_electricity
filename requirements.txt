@@ -1,5 +1,6 @@
 requests==2.31.0
-selenium==4.34.2
+playwright==1.44.0
+playwright-stealth==2.0.3
 schedule==1.2.1
 Pillow==10.1.0
 numpy==1.26.2

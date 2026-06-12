@@ -73,7 +73,7 @@
 
 ## 实现流程
 
-通过 Python 的 Selenium 自动化获取国家电网官网的电费电量数据，使用**原生 Selenium + Chrome 反检测标志位**绕过网站的反爬虫检测（全平台兼容，包括 ARMv6/v7）。登录时的**腾讯点击/滑动验证码**通过**大模型（LLM）视觉识别**自动解算，无需依赖传统 OCR 或 ONNX 神经网络模型。获取数据后通过 Home Assistant 的 [REST API](https://developers.home-assistant.io/docs/api/rest/) 将实体状态 POST 更新到 Home Assistant。
+通过 Python 的 Playwright 自动化获取国家电网官网的电费电量数据，使用**原生 Playwright + 浏览器指纹隐藏**绕过网站的反爬虫检测（全平台兼容，包括 ARMv6/v7）。登录时的**腾讯点击/滑动验证码**通过**大模型（LLM）视觉识别**自动解算，无需依赖传统 OCR 或 ONNX 神经网络模型。获取数据后通过 Home Assistant 的 [REST API](https://developers.home-assistant.io/docs/api/rest/) 将实体状态 POST 更新到 Home Assistant。
 
 # 安装与部署
 

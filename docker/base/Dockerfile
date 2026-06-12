@@ -9,7 +9,7 @@ ENV TZ=Asia/Shanghai
 ENV LANG=C.UTF-8
 
 RUN apt-get --allow-releaseinfo-change update \
-    && apt-get install -y --no-install-recommends jq chromium chromium-driver fonts-noto-cjk tzdata \
+    && apt-get install -y --no-install-recommends jq chromium fonts-noto-cjk tzdata \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
     && dpkg-reconfigure --frontend noninteractive tzdata \
