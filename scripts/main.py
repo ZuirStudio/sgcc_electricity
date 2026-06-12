@@ -18,17 +18,15 @@ def main():
         # 读取 .env 文件
         import dotenv
         dotenv.load_dotenv(verbose=True)
+        initConst()
     if os.path.isfile('/data/options.json'):
         with open('/data/options.json') as f:
             options = json.load(f)
         try:
             for key, value in options.items():
                 os.environ[key] = str(value)
-            import const
-            const.LLM_API_KEY = os.getenv('LLM_API_KEY', '').strip()
-            const.LLM_BASE_URL = os.getenv('LLM_BASE_URL', 'https://ark.cn-beijing.volces.com/api/v3')
-            const.LLM_MODEL = os.getenv('LLM_MODEL', 'doubao-seed-2-0-pro-260215')
             logging.info(f"当前以Homeassistant Add-on 形式运行.")
+            initConst()
         except Exception as e:
             logging.error(f"读取 options.json 文件失败，程序将退出，错误信息: {e}。")
             sys.exit()

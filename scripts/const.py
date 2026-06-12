@@ -28,10 +28,17 @@ PREPAY_BALANCE_SENSOR_NAME = "sensor.prepay_balance"
 BALANCE_UNIT = "CNY"
 USAGE_UNIT = "KWH"
 
-LLM_API_KEY = os.getenv('LLM_API_KEY', '').strip()
-LLM_BASE_URL = os.getenv('LLM_BASE_URL', 'https://ark.cn-beijing.volces.com/api/v3')
-LLM_MODEL = os.getenv('LLM_MODEL', 'doubao-seed-2-0-pro-260215')
+LLM_API_KEY: str
+LLM_BASE_URL: str
+LLM_MODEL: str
 
+def initConst():
+    global LLM_API_KEY, LLM_BASE_URL, LLM_MODEL
+    LLM_API_KEY = os.getenv('LLM_API_KEY', '').strip()
+    LLM_BASE_URL = os.getenv('LLM_BASE_URL', 'https://ark.cn-beijing.volces.com/api/v3').strip()
+    LLM_MODEL = os.getenv('LLM_MODEL', 'doubao-seed-2-0-pro-260215').strip()
+
+initConst()
 
 def get_data_dir() -> str:
     """获取数据存储目录：Docker 用 /data，本地用项目下的 data/"""
