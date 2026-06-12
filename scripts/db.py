@@ -20,27 +20,27 @@ class DB:
 
     def upsert_user(self, user_id, user, user_name):
         # 更新用户信息??
-        pass
+        logging.info(f"upsert_user: user_id: {user_id}, user: {user}, user_name: {user_name}")
 
     def cleanup_old_data(self):
         # 清理过旧数据??
-        pass
+        logging.info("cleanup_old_data")
 
     def insert_daily_data(self, data:dict):
         # 插入每日数据??
-        pass
+        logging.info(f"insert_daily_data: {data}")
 
     def insert_monthly_data(self, data:dict):
         # 插入每月数据??
-        pass
+        logging.info(f"insert_monthly_data: {data}")
 
     def insert_balance_log(self, data:dict):
         # 插入余额日志??
-        pass
+        logging.info(f"insert_balance_log: {data}")
 
     def insert_yearly_data(self, data:dict):
         # 插入每年数据??
-        pass
+        logging.info(f"insert_yearly_data: {data}")
 
 class SqliteDB(DB):
     def connect_user_db(self, user_id):
