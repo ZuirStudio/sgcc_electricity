@@ -39,6 +39,7 @@ class DataFetcher:
         self.IGNORE_USER_ID = os.getenv("IGNORE_USER_ID", "xxxxx,xxxxx").split(",")
         self.QR_CODE_LOGIN_WAIT_COUNT = int(os.getenv("QR_CODE_LOGIN_WAIT_COUNT", 7))
         self.QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT = int(os.getenv("QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT", 10))
+        self.HEADLESS_NEW = os.getenv("HEADLESS_NEW", "true").lower() == "true" or 'PYTHON_IN_DOCKER' in os.environ
         self._user_name_map = {}
         raw_names = os.getenv("USER_NAMES", "")
         if raw_names:
@@ -109,7 +110,7 @@ class DataFetcher:
         })
 
         # 无头模式（Docker 环境）
-        if 'PYTHON_IN_DOCKER' in os.environ:
+        if self.HEADLESS_NEW is True:
             chrome_options.add_argument("--headless=new")
             chrome_options.binary_location = "/usr/bin/chromium"
             service = ChromeService(executable_path="/usr/bin/chromedriver")
