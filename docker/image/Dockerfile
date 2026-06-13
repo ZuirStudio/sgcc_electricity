@@ -10,7 +10,6 @@ RUN cd /tmp \
     --disable-pip-version-check \
     --no-cache-dir \
     -r requirements.txt \
-    && python3 -m playwright install-deps chromium \
     && rm -rf /tmp/* \
     && pip cache purge \
     && rm -rf /var/lib/apt/lists/* \

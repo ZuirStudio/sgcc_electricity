@@ -1,3 +1,3 @@
-FROM tablebird/sgcc_electricity_base:1.7.2
+FROM tablebird/sgcc_electricity_base:latest
 
 ENV VERSION=DOCKER
