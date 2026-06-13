@@ -25,15 +25,18 @@ def main():
         try:
             for key, value in options.items():
                 os.environ[key] = str(value)
+            LOG_LEVEL = os.getenv("LOG_LEVEL","INFO")
+            logger_init(LOG_LEVEL)
             logging.info(f"当前以Homeassistant Add-on 形式运行.")
             initConst()
         except Exception as e:
+            LOG_LEVEL = os.getenv("LOG_LEVEL","INFO")
+            logger_init(LOG_LEVEL)
             logging.error(f"读取 options.json 文件失败，程序将退出，错误信息: {e}。")
             sys.exit()
 
     try:
         PHONE_NUMBER = os.getenv("PHONE_NUMBER")
-        logging.info(f"读取环境变量 PHONE_NUMBER : {PHONE_NUMBER}")
         PASSWORD = os.getenv("PASSWORD")
         HASS_URL = os.getenv("HASS_URL")
         JOB_START_TIME = os.getenv("JOB_START_TIME","07:00" )
@@ -42,8 +45,11 @@ def main():
         RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
 
         logger_init(LOG_LEVEL)
+        logging.info(f"读取环境变量 PHONE_NUMBER : {PHONE_NUMBER}")
         logging.info(f"当前以Docker镜像方式运行。")
     except Exception as e:
+        LOG_LEVEL = os.getenv("LOG_LEVEL","INFO")
+        logger_init(LOG_LEVEL)
         logging.error(f"读取 .env 文件失败，程序将退出，错误信息: {e}。")
         sys.exit()
 
@@ -103,6 +109,11 @@ def run_task(data_fetcher: DataFetcher):
 
 def logger_init(level: str):
     logger = logging.getLogger()
+    # 清除已有的所有 handlers，避免重复输出
+    if logger.handlers:
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
+            handler.close()
     logger.setLevel(level)
     logging.getLogger("urllib3").setLevel(logging.CRITICAL)
     format = logging.Formatter("%(asctime)s  [%(levelname)-8s] ---- %(message)s", "%Y-%m-%d %H:%M:%S")
