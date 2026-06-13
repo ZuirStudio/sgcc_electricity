@@ -760,19 +760,51 @@ class DataFetcher:
             target = page.locator(".total")
             target.wait_for(state="visible", timeout=self.DRIVER_IMPLICITY_WAIT_TIME * 1000)
             month_element_text = page.locator("//*[@id='pane-first']/div[1]/div[2]/div[2]/div/div[3]/table/tbody").inner_text()
+            logging.debug(f"[_get_month_usage] 原始表格文本: {repr(month_element_text)}")
+            
+            # 清理数据：去除空白字符和空值
             month_element = month_element_text.split("\n")
-            month_element = [x for x in month_element if x != "MAX"]
-            if len(month_element) % 3 != 0:
-                month_element = month_element[:-(len(month_element) % 3)]
-            month_element = np.array(month_element).reshape(-1, 3)
-            # 将每月的用电量保存为List
+            month_element = [x.strip() for x in month_element]
+            month_element = [x for x in month_element if x and x != "MAX"]
+            
+            logging.debug(f"[_get_month_usage] 清理后的数据: {month_element}")
+            
             month = []
             usage = []
             charge = []
-            for i in range(len(month_element)):
-                month.append(month_element[i][0])
-                usage.append(month_element[i][1])
-                charge.append(month_element[i][2])
+            
+            i = 0
+            while i < len(month_element):
+                # 寻找日期字符串（包含 '-' 且看起来像日期）
+                if '-' in month_element[i] and len(month_element[i]) > 10:
+                    # 提取月份：从 "2026-01-01 00:00:00-2026-01-31 00:00:00" 中提取 "2026-01"
+                    date_str = month_element[i]
+                    # 取前10个字符是 "2026-01-01"，然后取前7个字符
+                    month_str = date_str[:7]
+                    
+                    # 寻找后面的用电量和电费数值
+                    u_val = None
+                    c_val = None
+                    j = i + 1
+                    while j < len(month_element) and not ('-' in month_element[j] and len(month_element[j]) > 10):
+                        # 尝试判断是否为数字
+                        if month_element[j].replace('.', '', 1).isdigit():
+                            if u_val is None:
+                                u_val = month_element[j]
+                            elif c_val is None:
+                                c_val = month_element[j]
+                        j += 1
+                    
+                    if u_val is not None:
+                        month.append(month_str)
+                        usage.append(u_val)
+                        charge.append(c_val if c_val is not None else '')
+                    
+                    i = j
+                else:
+                    i += 1
+            
+            logging.debug(f"[_get_month_usage] 返回数据 - month={month}, usage={usage}, charge={charge}")
             return month, usage, charge
         except Exception as e:
             logging.error(f"月度数据获取失败: {e}")
@@ -903,6 +935,14 @@ class DataFetcher:
                         month, month_usage, month_charge,
                         yearly_charge, yearly_usage,
                         tou_data=None, bill_tou_data=None, user_name=""):
+        
+        logging.info(f"[_save_user_data] 入参: user_id={user_id}, balance={balance}, enhanced_balance={enhanced_balance}, "
+                     f"last_daily_date={last_daily_date}, last_daily_usage={last_daily_usage}, "
+                     f"date_list={date_list}, usage_list={usage_list}, "
+                     f"month={month}, month_usage={month_usage}, month_charge={month_charge}, "
+                     f"yearly_charge={yearly_charge}, yearly_usage={yearly_usage}, "
+                     f"tou_data={tou_data}, bill_tou_data={bill_tou_data}, user_name={user_name}")
+        
         if not self.db.connect_user_db(user_id):
             logging.error(f"[{user_id}] 数据库连接失败, 数据未写入")
             return
@@ -949,15 +989,11 @@ class DataFetcher:
 
             # 写入月度用电量（DOM 方式）
             if month:
-                cur_year = str(datetime.now().year)
                 for i in range(len(month)):
                     try:
-                        # 将 "1月1日-1月31日" 格式转为 "2026-01"
-                        m_text = month[i]
-                        m_num = re.search(r'(\d+)月', m_text)
-                        m_formatted = f"{cur_year}-{int(m_num.group(1)):02d}" if m_num else m_text
+                        # month[i] 已经是 "2026-01" 格式，直接使用
                         self.db.insert_monthly_data({
-                            "month": m_formatted,
+                            "month": month[i],
                             "total_usage": float(month_usage[i]) if month_usage[i] else None,
                             "total_charge": float(month_charge[i]) if month_charge[i] else None,
                             "user_id": user_id,
