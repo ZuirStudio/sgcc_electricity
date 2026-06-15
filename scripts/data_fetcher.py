@@ -162,13 +162,18 @@ class DataFetcher:
     @ErrorWatcher.watch
     def _login(self, page: Page, phone_code = False):
         try:
-            page.goto(LOGIN_URL)
+            page.goto(LOGIN_URL, wait_until="networkidle")
             page.wait_for_selector(".user", state="visible", timeout=self.DRIVER_IMPLICITY_WAIT_TIME * 3000)
         except Exception:
             logging.error(f"登录页面加载失败: {LOGIN_URL}")
             return False
         logging.info(f"打开登录页面: {LOGIN_URL}。\r")
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+        if (os.getenv("WAIT_SCAN_QR_CODE", "false") == "true"):
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+            page.wait_for_load_state("networkidle")
+            if page.url != LOGIN_URL:
+                logging.info("二维码登录成功。\r")
+                return True
         
         # swtich to username-password login page
         try:
@@ -195,7 +200,7 @@ class DataFetcher:
             logging.info(f"已输入验证码: {code}。\r")
             # 点击登录按钮
             self._click_button(page, '//*[@id="login_box"]/div[2]/div[2]/form/div[2]/div/button/span')
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+            page.wait_for_load_state("networkidle")
             logging.info("已点击登录按钮。\r")
 
             return True
@@ -210,7 +215,7 @@ class DataFetcher:
 
             # 点击登录按钮
             self._click_button(page, ".el-button.el-button--primary")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT * 2)
+            page.wait_for_load_state("networkidle")
             logging.info("已点击登录按钮。\r")
 
             # 快速检查：如果已经跳转离开登录页，说明无需验证码，直接成功
@@ -224,7 +229,7 @@ class DataFetcher:
                 # 处理腾讯点击验证码
                 captcha_passed = solve_captcha_in_browser(page, max_retries=self.RETRY_TIMES_LIMIT)
                 if captcha_passed:
-                    time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                    page.wait_for_load_state("networkidle")
                     if page.url != LOGIN_URL:
                         logging.info("通过点击验证码登录成功。\r")
                         return True
@@ -258,14 +263,16 @@ class DataFetcher:
             return self._qr_login(page, reason)
         return False
 
-    def _qr_login(self, page: Page, reason: str) -> bool:
-        logging.info("二维码登录开始")
-        # 切换验证码
-        page.wait_for_selector('.qr_code', state="attached", timeout=self.DRIVER_IMPLICITY_WAIT_TIME * 1000)
-        page.evaluate("document.querySelector('.qr_code').click()")
-        logging.info("已切换到二维码模式")
-
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+    def _get_qr_image(self, page: Page, print_qr: bool = False) -> bytes:
+        """
+        获取二维码图片数据
+        
+        Args:
+            page: Playwright 页面对象
+            
+        Returns:
+            bytes: 二维码图片的二进制数据
+        """
         # 获取登录二维码
         qr_selector = "//div[@class='sweepCodePic']//img"
         page.wait_for_selector(f"xpath={qr_selector}", state="visible", timeout=self.DRIVER_IMPLICITY_WAIT_TIME * 1000)
@@ -278,8 +285,21 @@ class DataFetcher:
             base64_data = img_src.split(',')[1]
             img_screenshot = base64.b64decode(base64_data)
         else:
-          logging.info('二维码图片源不是 base64 格式')
-          img_screenshot = qr_element.screenshot()
+            logging.info('二维码图片源不是 base64 格式')
+            img_screenshot = qr_element.screenshot()
+        
+        return img_screenshot
+
+    def _qr_login(self, page: Page, reason: str) -> bool:
+        logging.info("二维码登录开始")
+        # 切换验证码
+        page.wait_for_selector('.qr_code', state="attached", timeout=self.DRIVER_IMPLICITY_WAIT_TIME * 1000)
+        page.evaluate("document.querySelector('.qr_code').click()")
+        logging.info("已切换到二维码模式")
+
+        page.wait_for_load_state("networkidle")
+        # 获取二维码图片
+        img_screenshot = self._get_qr_image(page)
 
         with open("/data/login_qr_code.png", "wb") as f:
             f.write(img_screenshot)
@@ -355,10 +375,9 @@ class DataFetcher:
                 try:
                     self._random_delay(1, 3)
                     # 切换到电费余额页面
-                    page.goto(BALANCE_URL)
-                    time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                    page.goto(BALANCE_URL, wait_until="networkidle")
                     self._choose_current_userid(page, userid_index)
-                    time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                    page.wait_for_load_state("networkidle")
                     current_userid = self._get_current_userid(page)
                     if current_userid in self.IGNORE_USER_ID:
                         logging.info(f"用户 ID {current_userid} 将被忽略")
@@ -435,7 +454,7 @@ class DataFetcher:
         except Exception:
             # 备用方案: 点击 el-input__suffix（下拉箭头）
             page.click(".el-input__suffix")
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        page.wait_for_load_state("networkidle")
 
         # 获取下拉选项并点击目标
         options = self._get_visible_user_options(page)
@@ -481,13 +500,12 @@ class DataFetcher:
                 logging.warning(f"[{user_id}] 增强余额获取失败: {e}")
 
         logging.info(f"[{user_id}] 正在切换到用电量页面...")
-        page.goto(ELECTRIC_USAGE_URL)
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        page.goto(ELECTRIC_USAGE_URL, wait_until="networkidle")
         try:
             self._choose_current_userid(page, userid_index)
         except Exception as e:
             logging.warning(f"[{user_id}] 用电量页面用户切换失败 (非致命): {e}")
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        page.wait_for_load_state("networkidle")
 
         logging.info(f"[{user_id}] 正在获取年度用电数据...")
         yearly_usage, yearly_charge = self._get_yearly_data(page)
@@ -613,13 +631,12 @@ class DataFetcher:
             try:
                 select_inputs = page.query_selector_all(".houseNum .el-select .el-input__inner")
                 if not select_inputs:
-                    page.goto(ELECTRIC_USAGE_URL)
-                    time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT * 2)
+                    page.goto(ELECTRIC_USAGE_URL, wait_until="networkidle")
                     select_inputs = page.query_selector_all(".houseNum .el-select .el-input__inner")
 
                 if select_inputs:
                     select_inputs[0].click()
-                    time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                    page.wait_for_load_state("networkidle")
 
                     options = page.query_selector_all(".el-select-dropdown__item")
                     userid_list = []
@@ -628,7 +645,7 @@ class DataFetcher:
                         if re.match(r'^\d{4}$', text):
                             continue
                         opt.click()
-                        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                        page.wait_for_load_state("networkidle")
                         try:
                             current_id = self._get_current_userid(page)
                             if current_id and current_id not in userid_list:
@@ -639,7 +656,7 @@ class DataFetcher:
                         select_inputs = page.query_selector_all(".houseNum .el-select .el-input__inner")
                         if select_inputs:
                             select_inputs[0].click()
-                            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                            page.wait_for_load_state("networkidle")
 
                     if userid_list:
                         logging.info(f"从 el-select 获取到 {len(userid_list)} 个用户: {userid_list}")
@@ -696,12 +713,12 @@ class DataFetcher:
         try:
             if datetime.now().month == 1:
                 self._click_button(page, '//*[@id="pane-first"]/div[1]/div/div[1]/div/div/input')
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                page.wait_for_load_state("networkidle")
                 span_element = page.locator(f"//span[text() = '{datetime.now().year - 1}']")
                 span_element.click()
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                page.wait_for_load_state("networkidle")
             self._click_button(page, "//div[@class='el-tabs__nav is-top']/div[@id='tab-first']")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            page.wait_for_load_state("networkidle")
             # 等待数据显示
             target = page.locator(".total")
             target.wait_for(state="visible", timeout=self.DRIVER_IMPLICITY_WAIT_TIME * 1000)
@@ -729,7 +746,7 @@ class DataFetcher:
         try:
             # 点击日用电量 tab
             self._click_button(page, "//div[@class='el-tabs__nav is-top']/div[@id='tab-second']")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT * 2)
+            page.wait_for_load_state("networkidle")
             # 等待数据表格出现（兼容多种滚动类名）
             usage_selector = """//*[@id="pane-second"]/div[2]/div[2]/div[1]/div[3]/table/tbody/tr[1]/td[2]/div"""
             usage_element = page.locator(f"xpath={usage_selector}")
@@ -749,13 +766,13 @@ class DataFetcher:
 
         try:
             self._click_button(page, "//div[@class='el-tabs__nav is-top']/div[@id='tab-first']")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            page.wait_for_load_state("networkidle")
             if datetime.now().month == 1:
                 self._click_button(page, '//*[@id="pane-first"]/div[1]/div/div[1]/div/div/input')
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                page.wait_for_load_state("networkidle")
                 span_element = page.locator(f"//span[text() = '{datetime.now().year - 1}']")
                 span_element.click()
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                page.wait_for_load_state("networkidle")
             # 等待月度数据出现
             target = page.locator(".total")
             target.wait_for(state="visible", timeout=self.DRIVER_IMPLICITY_WAIT_TIME * 1000)
@@ -820,7 +837,7 @@ class DataFetcher:
             logging.info(f"正在获取每日用电量数据 (最近 {fetch_days} 天)")
             # 点击"日用电量" tab
             self._click_button(page, "//div[@class='el-tabs__nav is-top']/div[@id='tab-second']")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT * 3)
+            page.wait_for_load_state("networkidle")
 
             # 通过 radio 按钮点击 7天 或 30天
             if fetch_days == 30:
@@ -837,7 +854,7 @@ class DataFetcher:
                         logging.info("已点击 '近30天' 备用方案")
                     except Exception:
                         logging.warning("未找到 '近30天' radio, 使用默认数据")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT * 3)
+            page.wait_for_load_state("networkidle")
 
             # 原因分析：XPath 选择器匹配到了多个 tab-pane (有一个隐藏的)
             # Playwright 拿到了第一个元素，但它是隐藏的 (aria-hidden="true")
