@@ -229,7 +229,10 @@ class DataFetcher:
                 # 处理腾讯点击验证码
                 captcha_passed = solve_captcha_in_browser(page, max_retries=self.RETRY_TIMES_LIMIT)
                 if captcha_passed:
-                    page.wait_for_load_state("networkidle")
+                    try:
+                        page.wait_for_load_state("networkidle")
+                    except Exception as e:
+                        logging.error(f"验证码通过后页面加载超时: {e}")
                     if page.url != LOGIN_URL:
                         logging.info("通过点击验证码登录成功。\r")
                         return True
