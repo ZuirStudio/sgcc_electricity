@@ -1,0 +1,33 @@
+# HTTP 请求
+requests>=2.31.0
+
+# Web 自动化
+selenium>=4.34.2
+
+# 任务调度
+schedule>=1.2.1
+
+# 图像处理
+Pillow>=10.1.0
+numpy>=1.26.2
+
+# 环境变量
+python-dotenv>=1.0.1
+
+# MQTT（原始项目依赖）
+paho-mqtt>=2.1.0
+
+# OCR 验证码识别
+ddddocr>=1.6.1
+
+# 日期处理
+python-dateutil>=2.8.0
+
+# OpenAI 兼容 API（用于验证码识别，支持火山引擎 ARK）
+openai>=1.0.0
+
+# 异步支持（验证码识别依赖）
+nest-asyncio>=1.6.0
+
+# 数据库（原始项目依赖）
+mysql-connector-python>=9.4.0
