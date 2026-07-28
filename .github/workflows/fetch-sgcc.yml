@@ -1,0 +1,100 @@
+name: Fetch State Grid Data
+
+on:
+  schedule:
+    # 北京时间每天 07:00（UTC 23:00）
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Manual trigger reason'
+        required: false
+        default: 'Manual run'
+
+env:
+  PHONE_NUMBER: ${{ secrets.PHONE_NUMBER }}
+  PASSWORD: ${{ secrets.PASSWORD }}
+  HASS_URL: ${{ secrets.HASS_URL }}
+  HASS_TOKEN: ${{ secrets.HASS_TOKEN }}
+  ARK_API_KEY: ${{ secrets.ARK_API_KEY }}
+  FETCH_ON_STARTUP: "true"
+  DATA_RETENTION_DAYS: "7"
+  LOG_LEVEL: "INFO"
+  RETRY_TIMES_LIMIT: "5"
+  JOB_START_TIME: "07:00"
+  JOB_TIMES: "1"
+  DRIVER_IMPLICITY_WAIT_TIME: "60"
+  RETRY_WAIT_TIME_OFFSET_UNIT: "15"
+
+jobs:
+  fetch-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            chromium-browser \
+            chromium-chromedriver \
+            fonts-noto-cjk \
+            fonts-wqy-zenhei
+          echo "CHROME_BIN=/usr/bin/chromium-browser" >> $GITHUB_ENV
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-v2-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-v2-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install openai nest-asyncio mysql-connector-python
+
+      - name: Restore data cache
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: sgcc-data-${{ secrets.PHONE_NUMBER }}
+          restore-keys: |
+            sgcc-data-
+
+      - name: Ensure data directory exists
+        run: mkdir -p data/pages
+
+      - name: Run data fetch
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+          timeout 600 python scripts/run_once.py
+
+      - name: Push data to Home Assistant
+        if: success()
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+          python scripts/push_to_ha.py
+
+      - name: Save data cache
+        if: always()
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: sgcc-data-${{ secrets.PHONE_NUMBER }}-${{ github.run_id }}
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-screenshots
+          path: data/pages/*.png
+          retention-days: 3
